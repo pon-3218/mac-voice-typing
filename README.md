@@ -28,13 +28,19 @@ Fnを押している間だけ録音し、キーを離すとローカルで文字
 
 ## インストール
 
+[GitHub Releases](https://github.com/pon-3218/mac-voice-typing/releases/latest)から最新のDMGをダウンロードし、`Voice Input Local.app`をアプリケーションフォルダへ移動します。
+
+初回起動時にマイクとアクセシビリティの許可が必要です。
+
+ソースからローカルビルドする場合:
+
 ```bash
 git clone https://github.com/pon-3218/mac-voice-typing.git
 cd mac-voice-typing
 ./install-app.sh
 ```
 
-`/Applications/VoiceInputLocal.app`へインストールされ、メニューバーに常駐します。初回起動時にマイクとアクセシビリティの許可が必要です。
+`/Applications/VoiceInputLocal.app`へインストールされ、メニューバーに常駐します。
 
 開発ビルドでmacOSの権限が失効しないよう、初回インストール時にローカル専用の安定したコード署名証明書を作成します。秘密鍵はMacのローカルキーチェーンに保存され、リポジトリには含まれません。
 
@@ -45,6 +51,8 @@ swift test
 swift build
 ./build-app.sh
 ```
+
+公開用DMGの作成方法は[`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)を参照してください。
 
 ## License
 
