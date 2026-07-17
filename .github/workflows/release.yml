@@ -27,6 +27,12 @@ jobs:
       - name: Run tests
         run: swift test
 
+      - name: Prepare DMG builder
+        run: |
+          python3 -m venv "$RUNNER_TEMP/dmgbuild-venv"
+          "$RUNNER_TEMP/dmgbuild-venv/bin/pip" install --requirement scripts/requirements-release.txt
+          echo "DMGBUILD_PYTHON=$RUNNER_TEMP/dmgbuild-venv/bin/python" >> "$GITHUB_ENV"
+
       - name: Import Developer ID certificate
         env:
           CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}

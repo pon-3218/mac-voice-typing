@@ -25,6 +25,22 @@ xcrun notarytool store-credentials "voice-input-local-notary" \
 ```
 
 Apple Silicon向けのDeveloper ID署名、公証、DMG作成、staple、SHA-256生成を実行します。
+DMGはアプリとApplicationsフォルダを左右に配置したドラッグインストール形式で生成します。
+
+ローカルでDMG生成を確認する場合は、専用の仮想環境へ固定バージョンの`dmgbuild`をインストールします。
+
+```bash
+python3 -m venv .release-venv
+.release-venv/bin/pip install -r scripts/requirements-release.txt
+APP_OUTPUT_DIR="$PWD/dist/Voice Input Local.app" \
+  ALLOW_ADHOC_SIGNING=1 \
+  ./build-app.sh release
+DMGBUILD_PYTHON="$PWD/.release-venv/bin/python" \
+  ./scripts/create-dmg.sh \
+  "dist/Voice Input Local.app" \
+  "Voice Input Local" \
+  "/tmp/Voice-Input-Local-preview.dmg"
+```
 
 ```bash
 SIGNING_IDENTITY="Developer ID Application: Example (TEAMID)" \

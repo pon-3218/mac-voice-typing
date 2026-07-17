@@ -37,18 +37,10 @@ case "$mode" in
 
         codesign --verify --deep --strict --verbose=2 "$app_path"
 
-        dmg_root="$work_dir/dmg"
-        mkdir -p "$dmg_root"
-        ditto "$app_path" "$dmg_root/$app_name.app"
-        ln -s /Applications "$dmg_root/Applications"
-
         archive_path="$release_dir/Voice-Input-Local-$version-macOS.dmg"
-        rm -f "$archive_path"
-        hdiutil create \
-            -volname "$app_name" \
-            -srcfolder "$dmg_root" \
-            -format UDZO \
-            -ov \
+        "$project_dir/scripts/create-dmg.sh" \
+            "$app_path" \
+            "$app_name" \
             "$archive_path"
 
         codesign \
