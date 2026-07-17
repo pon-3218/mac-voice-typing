@@ -29,8 +29,8 @@ Fnを押している間だけ録音し、キーを離すとローカルで文字
 ## インストール
 
 ```bash
-git clone https://github.com/pon-3218/voice-input-local.git
-cd voice-input-local
+git clone https://github.com/pon-3218/mac-voice-typing.git
+cd mac-voice-typing
 ./install-app.sh
 ```
 
