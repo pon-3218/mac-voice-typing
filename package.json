@@ -1,0 +1,9 @@
+{
+  "name": "voice-input-local",
+  "private": true,
+  "scripts": {
+    "build": "swift build",
+    "test": "swift test",
+    "app": "./build-app.sh"
+  }
+}
