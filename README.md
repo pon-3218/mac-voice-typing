@@ -28,7 +28,7 @@ Fnを押している間だけ録音し、キーを離すとローカルで文字
 
 ## インストール
 
-[GitHub Releases](https://github.com/pon-3218/mac-voice-typing/releases/latest)から最新のDMGをダウンロードし、`Voice Input Local.app`をアプリケーションフォルダへ移動します。
+[最新の公証済みDMG](https://github.com/pon-3218/mac-voice-typing/releases/latest/download/Voice-Input-Local-macOS.dmg)をダウンロードし、`Voice Input Local.app`をアプリケーションフォルダへ移動します。
 
 初回起動時にマイクとアクセシビリティの許可が必要です。
 
