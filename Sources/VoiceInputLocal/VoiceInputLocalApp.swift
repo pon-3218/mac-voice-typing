@@ -57,6 +57,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        permissionWatchTask?.cancel()
+        prewarmTask?.cancel()
+        hotkey.stop()
+        dictation.cancel()
+    }
+
     private func setupDictation() {
         hotkey.onPress = { [weak self] in
             guard let self, AppModel.shared.settings.dictationEnabled else { return }
@@ -86,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             prewarmTask = Task.detached(priority: .background) { await MicStreamTranscriber.prewarm(locale: locale) }
         } else {
             hotkey.stop()
+            dictation.cancel()
             prewarmTask?.cancel()
             prewarmTask = nil
         }
