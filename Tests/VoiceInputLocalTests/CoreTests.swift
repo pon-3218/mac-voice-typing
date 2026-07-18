@@ -103,4 +103,20 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(script.contains("shasum -a 256 \"${archive_path:t}\""))
         XCTAssertTrue(script.contains("shasum -a 256 \"${stable_archive_path:t}\""))
     }
+
+    func testOnboardingIsFirstRunOnlyAndReopenableFromMenu() throws {
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/VoiceInputLocalApp.swift"),
+            encoding: .utf8
+        )
+        let onboarding = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Views/OnboardingView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("OnboardingState.needsPresentation"))
+        XCTAssertTrue(source.contains("NSMenuItem(title: \"使い方…\""))
+        XCTAssertTrue(onboarding.contains("Fnを押したまま話す"))
+        XCTAssertTrue(onboarding.contains("ログイン時に自動で起動"))
+    }
 }

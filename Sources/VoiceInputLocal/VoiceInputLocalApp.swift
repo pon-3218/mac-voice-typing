@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var statusItem: NSStatusItem?
     private var historyWindow: NSWindow?
     private var settingsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
     private let hotkey = HotkeyMonitor()
     private let dictation = DictationController()
     private let hud = DictationHUDController()
@@ -33,12 +34,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         setupStatusItem()
         setupDictation()
         AppModel.shared.refreshPermissions()
+        var shouldStartAutomaticSetup = true
         if ProcessInfo.processInfo.arguments.contains("--open-settings") {
             openSettings()
         } else if ProcessInfo.processInfo.arguments.contains("--open-history") {
             openHistory()
+        } else if ProcessInfo.processInfo.arguments.contains("--open-onboarding")
+                    || OnboardingState.needsPresentation {
+            openOnboarding()
+            shouldStartAutomaticSetup = false
         }
-        startAutomaticSetupIfNeeded()
+        if shouldStartAutomaticSetup {
+            startAutomaticSetupIfNeeded()
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -140,6 +148,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             menu.addItem(permission)
         }
         menu.addItem(.separator())
+        let onboarding = NSMenuItem(title: "使い方…", action: #selector(openOnboarding), keyEquivalent: "")
+        onboarding.target = self
+        menu.addItem(onboarding)
         let history = NSMenuItem(title: "履歴を開く", action: #selector(openHistory), keyEquivalent: "")
         history.target = self
         menu.addItem(history)
@@ -163,6 +174,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             applyPreferences()
         } else {
             AccessibilityPermission.openSettings()
+        }
+    }
+
+    private func requestOnboardingPermissions() {
+        Task {
+            if !AppModel.shared.microphoneGranted,
+               !(await AppModel.shared.requestMicrophonePermission()) {
+                AppModel.shared.openMicrophoneSettings()
+            }
+            if !AccessibilityPermission.isTrusted(),
+               !AccessibilityPermission.requestPrompt() {
+                AccessibilityPermission.openSettings()
+            }
+            applyPreferences()
         }
     }
 
@@ -232,6 +257,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         show(historyWindow)
     }
 
+    @objc private func openOnboarding() {
+        if onboardingWindow == nil {
+            onboardingWindow = makeWindow(title: "Voice Input Localへようこそ", width: 620, height: 470) {
+                OnboardingView(
+                    onRequestPermissions: { [weak self] in
+                        self?.requestOnboardingPermissions()
+                    },
+                    onFinish: { [weak self] in
+                        OnboardingState.markCompleted()
+                        self?.onboardingWindow?.orderOut(nil)
+                        self?.applyPreferences()
+                        self?.startAutomaticSetupIfNeeded()
+                    }
+                )
+                .environment(AppModel.shared)
+            }
+        }
+        show(onboardingWindow)
+    }
+
     @objc private func openSettings() {
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "音声入力設定", width: 500, height: 420) {
@@ -266,5 +311,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let window else { return }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if OnboardingState.needsPresentation {
+            openOnboarding()
+        } else {
+            openSettings()
+        }
+        return true
     }
 }
