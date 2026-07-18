@@ -42,3 +42,14 @@ Voice Input Local
 - `swift test`
 - `swift build`
 - `/Applications/Voice Input Local.app`を起動してオンボーディングとログイン項目を確認する
+
+## 検証結果
+
+- `swift test`: 11件成功
+- `swift build`: 成功
+- PR #1の必須チェック`build`: 成功
+- `/Applications/Voice Input Local.app` 0.1.3で初回オンボーディング、自動起動ON、マイク・文字入力の許可済み表示を確認
+- macOSのバックグラウンド項目で`enabled`、`allowed`を確認
+- Audio Input entitlementが有効であることを確認
+- v0.1.3の公開DMGでSHA-256、DMG、staple、署名、Gatekeeper検証に成功
+- Release: https://github.com/pon-3218/mac-voice-typing/releases/tag/v0.1.3
