@@ -94,4 +94,13 @@ final class CoreTests: XCTestCase {
         XCTAssertFalse(script.contains("KC_PW=\"voiceinput-local\""))
         XCTAssertFalse(script.contains("P12_PW=\"voiceinput\""))
     }
+
+    func testReleaseChecksumsUsePortableFileNames() throws {
+        let script = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("scripts/release.sh"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(script.contains("shasum -a 256 \"${archive_path:t}\""))
+        XCTAssertTrue(script.contains("shasum -a 256 \"${stable_archive_path:t}\""))
+    }
 }

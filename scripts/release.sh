@@ -74,8 +74,14 @@ case "$mode" in
         ;;
 esac
 
-shasum -a 256 "$archive_path" > "$archive_path.sha256"
+(
+    cd "${archive_path:h}"
+    shasum -a 256 "${archive_path:t}" > "${archive_path:t}.sha256"
+)
 if [[ -n "$stable_archive_path" ]]; then
-    shasum -a 256 "$stable_archive_path" > "$stable_archive_path.sha256"
+    (
+        cd "${stable_archive_path:h}"
+        shasum -a 256 "${stable_archive_path:t}" > "${stable_archive_path:t}.sha256"
+    )
 fi
 print "$archive_path"
