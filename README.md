@@ -32,6 +32,10 @@ Fnを押している間だけ録音し、キーを離すとローカルで文字
 
 初回起動時にマイクとアクセシビリティの許可が必要です。
 
+起動後はメニューバーのテキストカーソルアイコンから設定と履歴を開けます。マイク権限の要求はDeveloper ID署名とAudio Input entitlementを含む配布版から行います。
+
+同じReleaseにある`.sha256`ファイルでダウンロードしたDMGのSHA-256を照合できます。
+
 ソースからローカルビルドする場合:
 
 ```bash
@@ -54,6 +58,14 @@ swift build
 
 公開用DMGの作成方法は[`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)を参照してください。
 
-## License
+## プライバシーとセキュリティ
+
+音声認識はMac上で実行され、アプリにネットワーク通信や広告SDKはありません。入力履歴はローカルに保存されます。詳細は[PRIVACY.md](PRIVACY.md)を参照してください。
+
+脆弱性は公開Issueではなく、[Security Policy](SECURITY.md)に従って非公開で報告してください。通常の不具合や改善はIssue、変更提案はPull Requestを使用してください。
+
+開発参加手順は[CONTRIBUTING.md](CONTRIBUTING.md)、行動規範は[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)を参照してください。
+
+## ライセンス
 
 [MIT License](LICENSE)

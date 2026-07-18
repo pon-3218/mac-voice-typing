@@ -4,8 +4,32 @@ cd "$(dirname "$0")/.."
 
 CN="VoiceInputLocal Dev"
 KC="$HOME/Library/Keychains/voiceinput-signing.keychain-db"
-KC_PW="voiceinput-local"
-P12_PW="voiceinput"
+STATE_DIR="$HOME/Library/Application Support/VoiceInputLocal"
+KC_PW_FILE="$STATE_DIR/signing-keychain-password"
+
+mkdir -p "$STATE_DIR"
+chmod 700 "$STATE_DIR"
+
+if [[ -f "$KC" && ! -f "$KC_PW_FILE" ]]; then
+    security delete-keychain "$KC" 2>/dev/null || rm -f "$KC"
+fi
+
+if [[ ! -f "$KC_PW_FILE" ]]; then
+    umask 077
+    openssl rand -base64 48 | tr -d '\n' > "$KC_PW_FILE"
+fi
+chmod 600 "$KC_PW_FILE"
+
+KC_PW="$(<"$KC_PW_FILE")"
+P12_PW="$(openssl rand -base64 48 | tr -d '\n')"
+
+cleanup() {
+    security lock-keychain "${KC}" 2>/dev/null || true
+    if [[ -n "${TMP:-}" ]]; then
+        rm -rf "${TMP}"
+    fi
+}
+trap cleanup EXIT
 
 if [[ -f "${KC}" ]]; then
     security unlock-keychain -p "${KC_PW}" "${KC}"
@@ -21,7 +45,6 @@ if security find-certificate -c "${CN}" "${KC}" >/dev/null 2>&1; then
 fi
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "${TMP}"' EXIT
 
 cat > "${TMP}/codesign.cnf" <<EOF
 [req]
@@ -49,8 +72,6 @@ fi
 
 security import "${TMP}/codesign.p12" -k "${KC}" -P "${P12_PW}" -T /usr/bin/codesign
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KC_PW}" "${KC}" >/dev/null
-
-EXISTING="$(security list-keychains -d user | sed 's/[" ]//g' | grep -v "^${KC}$" || true)"
-security list-keychains -d user -s "${KC}" ${EXISTING}
+security lock-keychain "${KC}"
 
 echo "created signing identity: ${CN}"

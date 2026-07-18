@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Run tests
+        run: swift test
+      - name: Build Swift package
+        run: swift build
+      - name: Verify scripts and entitlements
+        run: |
+          bash -n build-app.sh install-app.sh tools/setup-signing.sh
+          zsh -n scripts/create-dmg.sh scripts/release.sh scripts/verify-dmg.sh
+          plutil -lint VoiceInputLocal.entitlements
+      - name: Verify release dependency lock
+        run: |
+          python3 -m venv "$RUNNER_TEMP/release-lock-venv"
+          "$RUNNER_TEMP/release-lock-venv/bin/pip" install --require-hashes --requirement scripts/requirements-release.txt

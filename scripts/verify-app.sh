@@ -16,8 +16,9 @@ executable="$app_path/Contents/MacOS/VoiceInputLocal"
 file "$executable"
 lipo -archs "$executable"
 
-if codesign -dv --verbose=4 "$app_path" 2>&1 | grep -q 'Authority=Developer ID Application'; then
-    codesign -d --entitlements :- "$app_path" >/dev/null
+signature_details=$(codesign -dv --verbose=4 "$app_path" 2>&1)
+if [[ "$signature_details" == *"Authority=Developer ID Application"* ]]; then
+    codesign -d --entitlements - "$app_path" >/dev/null
     spctl --assess --type execute --verbose=4 "$app_path"
 else
     print "Development signature detected; Gatekeeper distribution assessment skipped."

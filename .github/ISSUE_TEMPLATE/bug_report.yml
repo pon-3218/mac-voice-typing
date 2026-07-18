@@ -1,0 +1,38 @@
+name: 不具合報告
+description: 再現可能な不具合を報告します
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 音声、入力履歴、認証情報などの機密情報を添付しないでください。脆弱性はSecurity Policyから非公開で報告してください。
+  - type: input
+    id: version
+    attributes:
+      label: アプリバージョン
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOSバージョン
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した結果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の結果
+    validations:
+      required: true

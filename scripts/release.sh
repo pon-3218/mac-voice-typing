@@ -43,6 +43,13 @@ case "$mode" in
             "$app_name" \
             "$archive_path"
 
+        expected_team_id=$(codesign -dv --verbose=4 "$app_path" 2>&1 | awk -F= '/^TeamIdentifier=/{print $2}')
+        "$project_dir/scripts/verify-dmg.sh" \
+            "$archive_path" \
+            "$app_name" \
+            "jp.co.ntc.voice-input-local" \
+            "$expected_team_id"
+
         codesign \
             --force \
             --timestamp \

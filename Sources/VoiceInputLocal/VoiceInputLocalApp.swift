@@ -86,11 +86,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "音声入力")
+        item.autosaveName = "VoiceInputLocal.statusItem"
+        item.isVisible = true
+        let icon = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "音声入力")
+        let configuration = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        let menuIcon = icon?.withSymbolConfiguration(configuration) ?? icon
+        menuIcon?.isTemplate = true
+        item.button?.image = menuIcon
+        item.button?.imageScaling = .scaleProportionallyDown
+        item.button?.toolTip = "Voice Input Local"
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
         statusItem = item
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            self?.statusItem?.isVisible = true
+        }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

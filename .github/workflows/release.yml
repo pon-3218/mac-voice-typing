@@ -30,7 +30,7 @@ jobs:
       - name: Prepare DMG builder
         run: |
           python3 -m venv "$RUNNER_TEMP/dmgbuild-venv"
-          "$RUNNER_TEMP/dmgbuild-venv/bin/pip" install --requirement scripts/requirements-release.txt
+          "$RUNNER_TEMP/dmgbuild-venv/bin/pip" install --require-hashes --requirement scripts/requirements-release.txt
           echo "DMGBUILD_PYTHON=$RUNNER_TEMP/dmgbuild-venv/bin/python" >> "$GITHUB_ENV"
 
       - name: Import Developer ID certificate

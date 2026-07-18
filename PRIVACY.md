@@ -1,0 +1,7 @@
+# Privacy
+
+Voice Input Localは、マイク入力をApple SpeechAnalyzerでMac上の文字へ変換します。アプリ独自のサーバー、解析SDK、広告SDK、遠隔ログ収集はありません。
+
+録音は音声入力処理中だけ行い、処理用の一時音声は完了または失敗時に削除します。認識後の文字列、日時、所要時間、言語設定は最大500件の履歴として`~/Library/Application Support/VoiceInputLocal/history.json`へ保存します。設定と履歴はアプリ内から変更・削除できます。
+
+入力先へ文字を反映するため、アクセシビリティ権限を使用します。マイクとアクセシビリティの許可はmacOSのシステム設定からいつでも取り消せます。

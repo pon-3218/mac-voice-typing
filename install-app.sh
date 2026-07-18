@@ -7,8 +7,9 @@ SOURCE_APP="${APP_NAME}.app"
 INSTALL_APP="/Applications/${APP_NAME}.app"
 BUNDLE_ID="jp.co.ntc.voice-input-local"
 SIGN_KEYCHAIN="${HOME}/Library/Keychains/voiceinput-signing.keychain-db"
+SIGN_KEYCHAIN_PASSWORD_FILE="${HOME}/Library/Application Support/VoiceInputLocal/signing-keychain-password"
 
-if [[ ! -f "${SIGN_KEYCHAIN}" ]]; then
+if [[ ! -f "${SIGN_KEYCHAIN}" || ! -f "${SIGN_KEYCHAIN_PASSWORD_FILE}" ]]; then
     ./tools/setup-signing.sh
 fi
 
