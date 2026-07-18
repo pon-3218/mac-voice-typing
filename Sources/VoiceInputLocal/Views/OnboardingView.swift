@@ -36,7 +36,7 @@ struct OnboardingView: View {
 
             VStack(alignment: .leading, spacing: 20) {
                 onboardingStep(number: "1", title: "入力欄を選ぶ", detail: "文章を入れたい場所へカーソルを置きます。")
-                onboardingStep(number: "2", title: "Fnを押したまま話す", detail: "押している間だけマイクを使用します。")
+                onboardingStep(number: "2", title: "Fnを押したまま話す", detail: "押している間だけマイクを使い、他の音を抑えます。")
                 onboardingStep(number: "3", title: "離すと文字が入る", detail: "文字起こしはこのMac上で処理されます。")
             }
 

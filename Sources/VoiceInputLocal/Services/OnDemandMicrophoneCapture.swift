@@ -9,6 +9,7 @@ final class OnDemandMicrophoneCapture: @unchecked Sendable {
     private let queue = DispatchQueue(label: "jp.co.ntc.voice-input-local.on-demand-mic")
     private var preparedFormat: AVAudioFormat?
     private var tapInstalled = false
+    private var voiceProcessingEnabled = false
 
     // queue 内だけで触る。
     private var activeStream: MicStreamTranscriber?
@@ -34,11 +35,41 @@ final class OnDemandMicrophoneCapture: @unchecked Sendable {
         engine.prepare()
     }
 
+    /// Voice Processingを有効にしてから、実際の録音形式を確定する。
+    func prepareForRecording() throws {
+        guard !engine.isRunning else { return }
+        let input = engine.inputNode
+        if !voiceProcessingEnabled {
+            do {
+                try input.setVoiceProcessingEnabled(true)
+                voiceProcessingEnabled = true
+                var ducking = input.voiceProcessingOtherAudioDuckingConfiguration
+                ducking.enableAdvancedDucking = false
+                ducking.duckingLevel = .max
+                input.voiceProcessingOtherAudioDuckingConfiguration = ducking
+            } catch {
+                disableVoiceProcessing()
+                throw AppError.captureSetupFailed(
+                    "他のアプリの音声を抑制できません。\(error.localizedDescription)"
+                )
+            }
+        }
+
+        let format = input.inputFormat(forBus: 0)
+        guard format.sampleRate > 0 else {
+            disableVoiceProcessing()
+            throw AppError.captureSetupFailed("マイクの入力形式を取得できません。")
+        }
+        preparedFormat = format
+        engine.prepare()
+    }
+
     func startRecording(stream: MicStreamTranscriber, file: AVAudioFile) throws {
         guard !engine.isRunning else {
             throw AppError.captureSetupFailed("マイクはすでに使用中です。")
         }
-        try prepare()
+
+        try prepareForRecording()
         guard let format = preparedFormat else {
             throw AppError.captureSetupFailed("マイクの入力形式を取得できません。")
         }
@@ -65,6 +96,7 @@ final class OnDemandMicrophoneCapture: @unchecked Sendable {
                 activeStream = nil
                 activeFile = nil
             }
+            disableVoiceProcessing()
             throw error
         }
     }
@@ -76,6 +108,7 @@ final class OnDemandMicrophoneCapture: @unchecked Sendable {
             tapInstalled = false
         }
         engine.stop()
+        disableVoiceProcessing()
         let error = queue.sync { () -> Error? in
             activeStream = nil
             activeFile = nil
@@ -84,6 +117,12 @@ final class OnDemandMicrophoneCapture: @unchecked Sendable {
             return error
         }
         if let error { throw error }
+    }
+
+    private func disableVoiceProcessing() {
+        guard voiceProcessingEnabled else { return }
+        try? engine.inputNode.setVoiceProcessingEnabled(false)
+        voiceProcessingEnabled = false
     }
 
     private func receive(_ buffer: AVAudioPCMBuffer) {

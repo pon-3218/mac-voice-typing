@@ -119,4 +119,22 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(onboarding.contains("Fnを押したまま話す"))
         XCTAssertTrue(onboarding.contains("ログイン時に自動で起動"))
     }
+
+    func testCaptureUsesMaximumVoiceProcessingDuckingAndStopsIt() throws {
+        let capture = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/OnDemandMicrophoneCapture.swift"),
+            encoding: .utf8
+        )
+        let app = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/VoiceInputLocalApp.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(capture.contains("setVoiceProcessingEnabled(true)"))
+        XCTAssertTrue(capture.contains("voiceProcessingOtherAudioDuckingConfiguration"))
+        XCTAssertTrue(capture.contains("duckingLevel = .max"))
+        XCTAssertTrue(capture.contains("setVoiceProcessingEnabled(false)"))
+        XCTAssertTrue(app.contains("func applicationWillTerminate"))
+        XCTAssertTrue(app.contains("dictation.cancel()"))
+    }
 }

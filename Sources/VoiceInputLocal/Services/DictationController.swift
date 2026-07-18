@@ -51,7 +51,7 @@ final class DictationController {
     }
 
     private func startCapture(_ transcriber: MicStreamTranscriber) -> Bool {
-        do { try capture.prepare() } catch {
+        do { try capture.prepareForRecording() } catch {
             lastError = error.localizedDescription
             finishWithoutText()
             return false
@@ -86,6 +86,20 @@ final class DictationController {
         guard phase == .listening else { return }
         phase = .transcribing
         Task { await finishUp() }
+    }
+
+    func cancel() {
+        setupTask?.cancel()
+        setupTask = nil
+        stream?.cancel()
+        stream = nil
+        try? capture.stopRecording()
+        audioFile = nil
+        if let url = fileURL { try? FileManager.default.removeItem(at: url) }
+        fileURL = nil
+        insertionTarget = nil
+        phase = .idle
+        onFinished?()
     }
 
     private func finishUp() async {
