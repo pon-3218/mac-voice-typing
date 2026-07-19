@@ -176,4 +176,54 @@ final class CoreTests: XCTestCase {
             XCTAssertTrue(error is ResultStreamError)
         }
     }
+
+    func testSparkleUpdaterIsConfiguredAndPackaged() throws {
+        let package = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Package.swift"),
+            encoding: .utf8
+        )
+        let infoData = try Data(contentsOf: repositoryRoot.appendingPathComponent("Info.plist"))
+        let info = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: infoData, format: nil) as? [String: Any]
+        )
+        let app = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/VoiceInputLocalApp.swift"),
+            encoding: .utf8
+        )
+        let build = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("build-app.sh"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(package.contains("sparkle-project/Sparkle"))
+        XCTAssertTrue(package.contains(".product(name: \"Sparkle\""))
+        XCTAssertEqual(
+            info["SUFeedURL"] as? String,
+            "https://github.com/pon-3218/mac-voice-typing/releases/latest/download/appcast.xml"
+        )
+        XCTAssertEqual(info["SUPublicEDKey"] as? String, "/pZPsjAugR1OBk4dmcXeBNj3ejbXEQUainCLNVQfifg=")
+        XCTAssertEqual(info["SUEnableAutomaticChecks"] as? Bool, true)
+        XCTAssertEqual(info["SUAutomaticallyUpdate"] as? Bool, true)
+        XCTAssertTrue(app.contains("SPUStandardUpdaterController"))
+        XCTAssertTrue(app.contains("supportsGentleScheduledUpdateReminders"))
+        XCTAssertTrue(app.contains("アップデートを確認…"))
+        XCTAssertTrue(build.contains("Sparkle.framework"))
+        XCTAssertTrue(build.contains("Autoupdate"))
+    }
+
+    func testReleasePublishesSignedSparkleAppcast() throws {
+        let release = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("scripts/release.sh"),
+            encoding: .utf8
+        )
+        let workflow = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(".github/workflows/release.yml"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(release.contains("generate_appcast"))
+        XCTAssertTrue(release.contains("--ed-key-file -"))
+        XCTAssertTrue(release.contains("appcast.xml"))
+        XCTAssertTrue(workflow.contains("SPARKLE_EDDSA_PRIVATE_KEY"))
+    }
 }

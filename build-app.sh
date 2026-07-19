@@ -38,11 +38,37 @@ cp "${BIN_DIR}/${APP_NAME}" "${APP}/Contents/MacOS/${APP_NAME}"
 cp Info.plist "${APP}/Contents/Info.plist"
 cp "${ICON}" "${APP}/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "${APP}/Contents/PkgInfo"
+
+SPARKLE_FRAMEWORK="$(find "$(pwd)/.build/artifacts" -type d -path '*/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework' -print -quit)"
+if [[ -z "${SPARKLE_FRAMEWORK}" ]]; then
+    echo "missing Sparkle.framework from Swift Package artifacts" >&2
+    exit 1
+fi
+mkdir -p "${APP}/Contents/Frameworks"
+ditto "${SPARKLE_FRAMEWORK}" "${APP}/Contents/Frameworks/Sparkle.framework"
+
+sign_sparkle_components() {
+    local identity="$1"
+    local use_timestamp="$2"
+    local framework="${APP}/Contents/Frameworks/Sparkle.framework"
+    local base="${framework}/Versions/B"
+    local args=(--force --options runtime --sign "${identity}")
+    if [[ "${use_timestamp}" == "1" ]]; then
+        args+=(--timestamp)
+    fi
+
+    codesign "${args[@]}" "${base}/XPCServices/Installer.xpc"
+    codesign "${args[@]}" --preserve-metadata=entitlements "${base}/XPCServices/Downloader.xpc"
+    codesign "${args[@]}" "${base}/Autoupdate"
+    codesign "${args[@]}" "${base}/Updater.app"
+    codesign "${args[@]}" "${framework}"
+}
+
 if [[ -n "${SIGNING_IDENTITY:-}" ]]; then
     if [[ "${SIGNING_IDENTITY}" == "-" ]]; then
+        sign_sparkle_components "-" 0
         codesign \
             --force \
-            --deep \
             --options runtime \
             --entitlements "${ENTITLEMENTS}" \
             --sign - \
@@ -50,9 +76,9 @@ if [[ -n "${SIGNING_IDENTITY:-}" ]]; then
             "${APP}"
         echo "signed for development distribution: ad-hoc"
     else
+        sign_sparkle_components "${SIGNING_IDENTITY}" 1
         codesign \
             --force \
-            --deep \
             --options runtime \
             --entitlements "${ENTITLEMENTS}" \
             --timestamp \
@@ -64,9 +90,8 @@ elif [[ -f "${SIGN_KEYCHAIN}" && -f "${SIGN_KEYCHAIN_PASSWORD_FILE}" ]]; then
     SIGN_KEYCHAIN_PASSWORD="$(<"${SIGN_KEYCHAIN_PASSWORD_FILE}")"
     security unlock-keychain -p "${SIGN_KEYCHAIN_PASSWORD}" "${SIGN_KEYCHAIN}"
     LOCAL_KEYCHAIN_UNLOCKED=1
-    if codesign \
+    if sign_sparkle_components "${LOCAL_SIGN_IDENTITY}" 0 && codesign \
         --force \
-        --deep \
         --options runtime \
         --entitlements "${ENTITLEMENTS}" \
         --sign "${LOCAL_SIGN_IDENTITY}" \
@@ -75,14 +100,16 @@ elif [[ -f "${SIGN_KEYCHAIN}" && -f "${SIGN_KEYCHAIN_PASSWORD_FILE}" ]]; then
         echo "signed with stable identity: ${LOCAL_SIGN_IDENTITY}"
     elif [[ "${ALLOW_ADHOC_SIGNING:-0}" == "1" ]]; then
         echo "warning: explicit ad-hoc signing; privacy permissions will not survive rebuilds" >&2
-        codesign --force --deep --options runtime --entitlements "${ENTITLEMENTS}" --sign - "${APP}"
+        sign_sparkle_components "-" 0
+        codesign --force --options runtime --entitlements "${ENTITLEMENTS}" --sign - "${APP}"
     else
         echo "stable signing failed. Run ./tools/setup-signing.sh again." >&2
         exit 1
     fi
 elif [[ "${ALLOW_ADHOC_SIGNING:-0}" == "1" ]]; then
     echo "warning: explicit ad-hoc signing; privacy permissions will not survive rebuilds" >&2
-    codesign --force --deep --options runtime --entitlements "${ENTITLEMENTS}" --sign - "${APP}"
+    sign_sparkle_components "-" 0
+    codesign --force --options runtime --entitlements "${ENTITLEMENTS}" --sign - "${APP}"
 else
     echo "missing stable signing identity. Run ./tools/setup-signing.sh first." >&2
     exit 1

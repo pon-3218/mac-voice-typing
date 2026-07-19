@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 @main
 struct VoiceInputLocalApp: App {
@@ -15,7 +16,7 @@ struct VoiceInputLocalApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate, SPUStandardUserDriverDelegate {
     private var statusItem: NSStatusItem?
     private var historyWindow: NSWindow?
     private var settingsWindow: NSWindow?
@@ -23,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let hotkey = HotkeyMonitor()
     private let dictation = DictationController()
     private let hud = DictationHUDController()
+    private var updaterController: SPUStandardUpdaterController!
     private var prewarmTask: Task<Void, Never>?
     private var permissionRequestInFlight = false
     private var automaticSetupStarted = false
@@ -31,6 +33,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: self
+        )
         setupStatusItem()
         setupDictation()
         AppModel.shared.refreshPermissions()
@@ -63,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         hotkey.stop()
         dictation.cancel()
     }
+
+    nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
 
     private func setupDictation() {
         hotkey.onPress = { [weak self] in
@@ -165,6 +174,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let settings = NSMenuItem(title: "設定…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
+        let updates = NSMenuItem(
+            title: "アップデートを確認…",
+            action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        updates.target = updaterController
+        updates.isEnabled = updaterController.updater.canCheckForUpdates
+        menu.addItem(updates)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }

@@ -16,6 +16,7 @@ jobs:
       KEYCHAIN_NAME: voice-input-local-build.keychain
       NOTARY_PROFILE: voice-input-local-notary
       SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+      SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
@@ -81,3 +82,9 @@ jobs:
             --generate-notes \
             --verify-tag
           gh release edit "$GITHUB_REF_NAME" --draft=false
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN_NAME" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/developer-id.p12"
