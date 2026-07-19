@@ -324,6 +324,22 @@ final class CoreTests: XCTestCase {
         XCTAssertFalse(settings.contains("Picker(\"長押しキー\""))
     }
 
+    func testRecordedModifierKeyIsSavedBeforeHotkeyMonitoringRestarts() throws {
+        let settings = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Views/SettingsView.swift"),
+            encoding: .utf8
+        )
+        let recordStart = try XCTUnwrap(settings.range(of: "private func record(_ key:"))
+        let recordEnd = try XCTUnwrap(
+            settings.range(of: "private func finishKeyRecording()", range: recordStart.upperBound..<settings.endIndex)
+        )
+        let recordBody = String(settings[recordStart.lowerBound..<recordEnd.lowerBound])
+        let save = try XCTUnwrap(recordBody.range(of: "model.updateSettings(draft)"))
+        let restart = try XCTUnwrap(recordBody.range(of: "finishKeyRecording()"))
+
+        XCTAssertLessThan(save.lowerBound, restart.lowerBound)
+    }
+
     func testCodexResearchUsesTextOnlyReadOnlyAppServerSession() throws {
         let source = try String(
             contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/CodexResearchClient.swift"),

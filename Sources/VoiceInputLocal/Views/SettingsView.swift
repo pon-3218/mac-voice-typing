@@ -139,19 +139,25 @@ struct SettingsView: View {
     }
 
     private func record(_ key: DictationKey, for target: RecordingTarget) {
+        var didRecord = false
         switch target {
         case .dictation:
             if draft.codexResearchEnabled, key.rawValue == draft.codexResearchKeyCode {
                 recordingError = "Codexの長押しキーとは別のキーを押してください。"
             } else {
                 draft.dictationKeyCode = key.rawValue
+                didRecord = true
             }
         case .codexResearch:
             if draft.dictationEnabled, key.rawValue == draft.dictationKeyCode {
                 recordingError = "通常の音声入力とは別のキーを押してください。"
             } else {
                 draft.codexResearchKeyCode = key.rawValue
+                didRecord = true
             }
+        }
+        if didRecord {
+            model.updateSettings(draft)
         }
         finishKeyRecording()
     }
