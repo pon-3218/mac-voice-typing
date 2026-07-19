@@ -1,5 +1,6 @@
 import Foundation
-import AppKit
+import ApplicationServices
+import CoreGraphics
 
 struct HoldActivationState {
     enum Action: Equatable {
@@ -64,8 +65,8 @@ struct HoldActivationState {
 @MainActor
 final class HotkeyMonitor {
 
-    private var globalMonitor: Any?
-    private var localMonitor: Any?
+    private var eventTap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
     private var activationState = HoldActivationState()
     private var activationTask: Task<Void, Never>?
 
@@ -79,34 +80,51 @@ final class HotkeyMonitor {
 
     func start() {
         stop()
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
-            self?.handle(event)
+        let mask = (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
+            | (CGEventMask(1) << CGEventType.keyDown.rawValue)
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .tailAppendEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: Self.eventCallback,
+            userInfo: context
+        ) else {
+            Dbg.log("[hotkey] event tap creation failed keyCode=\(targetKeyCode) accessibilityTrusted=\(AccessibilityPermission.isTrusted())")
+            return
         }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
-            self?.handle(event)
-            return event
-        }
-        Dbg.log("[hotkey] started keyCode=\(targetKeyCode) accessibilityTrusted=\(AccessibilityPermission.isTrusted())")
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        eventTap = tap
+        runLoopSource = source
+        Dbg.log("[hotkey] event tap started keyCode=\(targetKeyCode) accessibilityTrusted=\(AccessibilityPermission.isTrusted())")
     }
 
     func stop() {
-        if let g = globalMonitor { NSEvent.removeMonitor(g) }
-        if let l = localMonitor { NSEvent.removeMonitor(l) }
-        globalMonitor = nil
-        localMonitor = nil
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        }
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+        }
+        runLoopSource = nil
+        eventTap = nil
         activationTask?.cancel()
         activationTask = nil
         activationState.reset()
     }
 
-    private func handle(_ event: NSEvent) {
-        if event.type == .keyDown {
+    private func handle(type: CGEventType, keyCode: UInt16, flags: CGEventFlags) {
+        if type == .keyDown {
             guard cancelsDelayedActivationOnOtherKey else { return }
             perform(activationState.otherKeyPressed())
             return
         }
-        guard event.keyCode == targetKeyCode else { return }
-        let isDown = event.modifierFlags.contains(modifierFlag(for: targetKeyCode))
+        guard type == .flagsChanged, keyCode == targetKeyCode else { return }
+        let isDown = flags.contains(modifierFlag(for: targetKeyCode))
+        Dbg.log("[hotkey] flagsChanged keyCode=\(keyCode) isDown=\(isDown)")
         perform(isDown
             ? activationState.press(requiresDelay: activationDelay > 0)
             : activationState.release())
@@ -117,6 +135,7 @@ final class HotkeyMonitor {
         case .none:
             break
         case .scheduleActivation:
+            Dbg.log("[hotkey] activation scheduled keyCode=\(targetKeyCode) delay=\(activationDelay)")
             activationTask?.cancel()
             let delay = activationDelay
             activationTask = Task { [weak self] in
@@ -125,6 +144,7 @@ final class HotkeyMonitor {
                 self.perform(self.activationState.activatePending())
             }
         case .cancelPending:
+            Dbg.log("[hotkey] pending activation cancelled keyCode=\(targetKeyCode)")
             activationTask?.cancel()
             activationTask = nil
         case .activate:
@@ -138,14 +158,35 @@ final class HotkeyMonitor {
     }
 
     /// keyCode に対応する修飾フラグ。
-    private func modifierFlag(for keyCode: UInt16) -> NSEvent.ModifierFlags {
+    private func modifierFlag(for keyCode: UInt16) -> CGEventFlags {
         switch keyCode {
-        case 58, 61: return .option
-        case 54, 55: return .command
-        case 59, 62: return .control
-        case 56, 60: return .shift
-        case 63: return .function
-        default: return .option
+        case 58, 61: return .maskAlternate
+        case 54, 55: return .maskCommand
+        case 59, 62: return .maskControl
+        case 56, 60: return .maskShift
+        case 63: return .maskSecondaryFn
+        default: return .maskAlternate
         }
+    }
+
+    private static let eventCallback: CGEventTapCallBack = { _, type, event, userInfo in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        let monitor = Unmanaged<HotkeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
+
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            DispatchQueue.main.async {
+                if let tap = monitor.eventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
+        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        let flags = event.flags
+        DispatchQueue.main.async {
+            monitor.handle(type: type, keyCode: keyCode, flags: flags)
+        }
+        return Unmanaged.passUnretained(event)
     }
 }

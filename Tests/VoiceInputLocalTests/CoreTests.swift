@@ -267,6 +267,18 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(state.release(), .release)
     }
 
+    func testModifierOnlyHoldUsesSessionEventTap() throws {
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/HotkeyMonitor.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("CGEvent.tapCreate"))
+        XCTAssertTrue(source.contains("CGEventType.flagsChanged"))
+        XCTAssertTrue(source.contains("keyboardEventKeycode"))
+        XCTAssertTrue(source.contains("tapDisabledByTimeout"))
+    }
+
     func testCodexResearchUsesTextOnlyReadOnlyAppServerSession() throws {
         let source = try String(
             contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/CodexResearchClient.swift"),

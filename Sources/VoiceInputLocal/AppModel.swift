@@ -14,8 +14,10 @@ final class AppModel {
     private let permissions = PermissionsService.shared
 
     init() {
-        settings = storage.loadSettings()
+        let loadedSettings = storage.loadSettings()
+        settings = loadedSettings
         dictationRecords = storage.loadDictationRecords()
+        storage.saveSettings(loadedSettings)
         refreshPermissions()
     }
 

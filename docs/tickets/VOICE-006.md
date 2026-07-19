@@ -60,3 +60,5 @@ Voice Input Local
 - Developer ID Application署名のReleaseビルドと`codesign --verify --deep --strict`が成功した。
 - v0.1.7/build 8を`/Applications/Voice Input Local.app`へインストールして起動した。
 - 実画面でCodex質問が有効、長押しキーが右Command、通常音声入力キーがFnであることを確認した。
+- 右Command単体の検出を`NSEvent`監視からCGSession Event Tapへ変更し、修飾キー単体を確実に取得するよう修正した。
+- 旧設定から補完したCodex設定を起動時に保存するよう修正した。
