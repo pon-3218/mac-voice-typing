@@ -55,3 +55,8 @@ v0.1.5まではstable DMG URLを公開しているが、アプリ自身は更新
 - `swift build`が成功した。
 - Developer ID Application署名のReleaseビルドが成功した。
 - `codesign --verify --deep --strict`でアプリとSparkle内部コンポーネントの署名を確認した。
+- GitHub Actions Release run 29677461771が成功し、v0.1.6を公開した。
+- 公開stable DMGのSHA-256、ディスクイメージ、Developer ID署名、Apple公証、Gatekeeperを検証した。
+- 公開appcastのXML、SHA-256、v0.1.6/build 7、更新DMGのEdDSA署名を検証した。
+- 公開DMGから`/Applications/Voice Input Local.app`へv0.1.6を再インストールして起動した。
+- 更新確認時刻`SULastCheckTime`が更新され、公開appcastへの自動確認が動作した。
