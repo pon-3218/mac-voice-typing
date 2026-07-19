@@ -31,12 +31,12 @@ struct SettingsView: View {
             Section("Codexで調べる") {
                 Toggle("音声でCodexに質問する", isOn: $draft.codexResearchEnabled)
                 keyRecorderRow(
-                    title: "長押しキー",
+                    title: "質問キー",
                     keyCode: draft.codexResearchKeyCode,
                     target: .codexResearch,
                     enabled: draft.codexResearchEnabled
                 )
-                Text("長押し中に質問を話し、離すとCodexへ送ります。短いタップやキーボードショートカットでは起動しません。")
+                Text("キーを押すとすぐ録音を開始し、離すとCodexへ送ります。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let recordingError {
@@ -143,7 +143,7 @@ struct SettingsView: View {
         switch target {
         case .dictation:
             if draft.codexResearchEnabled, key.rawValue == draft.codexResearchKeyCode {
-                recordingError = "Codexの長押しキーとは別のキーを押してください。"
+                recordingError = "Codex質問キーとは別のキーを押してください。"
             } else {
                 draft.dictationKeyCode = key.rawValue
                 didRecord = true

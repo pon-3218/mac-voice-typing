@@ -90,8 +90,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         hotkey.onRelease = { [weak self] in self?.endListening(destination: .textInput) }
 
-        codexHotkey.activationDelay = 0.45
-        codexHotkey.cancelsDelayedActivationOnOtherKey = true
         codexHotkey.onPress = { [weak self] in
             guard let self, AppModel.shared.settings.codexResearchEnabled else { return }
             AppModel.shared.refreshPermissions()
