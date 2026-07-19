@@ -6,8 +6,10 @@ import Observation
 @Observable
 final class DictationController {
     enum Phase: Equatable { case idle, listening, transcribing }
+    enum Destination: Equatable { case textInput, codexResearch }
 
     var phase: Phase = .idle
+    var destination: Destination = .textInput
     var partialText = ""
     var languageMode: LanguageMode = .auto
     var lastError: String?
@@ -21,16 +23,17 @@ final class DictationController {
     private var insertionTarget: TextInserter.FocusedTarget?
 
     var onFinished: (() -> Void)?
-    var onDeliveredText: ((_ text: String, _ duration: TimeInterval, _ languageMode: LanguageMode) -> Void)?
+    var onTranscribedText: ((_ text: String, _ duration: TimeInterval, _ languageMode: LanguageMode, _ destination: Destination) -> Void)?
 
     /// 権限取得後に呼び、音声を取得せずグラフだけ準備する。
     func prepareCapture() {
         try? capture.prepare()
     }
 
-    func startListening() {
+    func startListening(destination: Destination = .textInput) {
         guard phase == .idle else { return }
-        insertionTarget = TextInserter.captureFocusedTarget()
+        self.destination = destination
+        insertionTarget = destination == .textInput ? TextInserter.captureFocusedTarget() : nil
         phase = .listening
         partialText = ""
         lastError = nil
@@ -133,8 +136,10 @@ final class DictationController {
         fileURL = nil
         if !text.isEmpty {
             partialText = text
-            TextInserter.deliver(text, to: insertionTarget)
-            onDeliveredText?(text, duration, languageMode)
+            if destination == .textInput {
+                TextInserter.deliver(text, to: insertionTarget)
+            }
+            onTranscribedText?(text, duration, languageMode, destination)
         }
         insertionTarget = nil
         phase = .idle

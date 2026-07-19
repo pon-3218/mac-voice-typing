@@ -13,10 +13,10 @@ struct DictationHUDView: View {
                 .symbolEffect(.pulse, isActive: controller.phase == .listening)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(controller.phase == .transcribing ? "変換中…" : "聞き取り中…")
+                Text(statusTitle)
                     .font(.headline)
                 if controller.partialText.isEmpty {
-                    Text(controller.phase == .listening ? "話してください。キーを離すと入力します" : "")
+                    Text(instructionText)
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     // 末尾（最新）を常に表示。古い行は上へスクロールして消える。
@@ -42,6 +42,18 @@ struct DictationHUDView: View {
         .frame(width: 380, height: 110, alignment: .topLeading)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.12)))
+    }
+
+    private var statusTitle: String {
+        if controller.phase == .transcribing { return "変換中…" }
+        return controller.destination == .codexResearch ? "Codexへの質問を聞き取り中…" : "聞き取り中…"
+    }
+
+    private var instructionText: String {
+        guard controller.phase == .listening else { return "" }
+        return controller.destination == .codexResearch
+            ? "質問を話してください。キーを離すとCodexへ送ります"
+            : "話してください。キーを離すと入力します"
     }
 }
 

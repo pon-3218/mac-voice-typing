@@ -5,3 +5,4 @@
 | VOICE-003 | open | P1 | 音声入力中に他アプリの音声出力を抑制する | [VOICE-003.md](VOICE-003.md) |
 | VOICE-004 | done | P0 | 音声入力が一文字だけになる不具合を修正する | [VOICE-004.md](VOICE-004.md) |
 | VOICE-005 | done | P1 | 公開版の自動アップデートに対応する | [VOICE-005.md](VOICE-005.md) |
+| VOICE-006 | done | P1 | 専用ホールドキーの音声でCodexに質問する | [VOICE-006.md](VOICE-006.md) |

@@ -226,4 +226,69 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(release.contains("appcast.xml"))
         XCTAssertTrue(workflow.contains("SPARKLE_EDDSA_PRIVATE_KEY"))
     }
+
+    func testDefaultSettingsUseRightCommandForCodexResearch() {
+        let settings = AppSettings.makeDefault()
+        XCTAssertTrue(settings.codexResearchEnabled)
+        XCTAssertEqual(settings.codexResearchKeyCode, DictationKey.rightCommand.rawValue)
+        XCTAssertNotEqual(settings.codexResearchKeyCode, settings.dictationKeyCode)
+    }
+
+    func testLegacySettingsGainCodexResearchDefaultsWithoutLosingValues() throws {
+        let legacy = """
+        {
+          "languageMode" : "english",
+          "autoLaunch" : false,
+          "dictationEnabled" : true,
+          "dictationKeyCode" : 61
+        }
+        """.data(using: .utf8)!
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: legacy)
+        XCTAssertEqual(settings.languageMode, .english)
+        XCTAssertFalse(settings.autoLaunch)
+        XCTAssertEqual(settings.dictationKeyCode, DictationKey.rightOption.rawValue)
+        XCTAssertTrue(settings.codexResearchEnabled)
+        XCTAssertEqual(settings.codexResearchKeyCode, DictationKey.rightCommand.rawValue)
+    }
+
+    func testDelayedHoldIgnoresTapAndShortcutButActivatesLongPress() {
+        var state = HoldActivationState()
+        XCTAssertEqual(state.press(requiresDelay: true), .scheduleActivation)
+        XCTAssertEqual(state.release(), .cancelPending)
+
+        XCTAssertEqual(state.press(requiresDelay: true), .scheduleActivation)
+        XCTAssertEqual(state.otherKeyPressed(), .cancelPending)
+        XCTAssertEqual(state.activatePending(), .none)
+        XCTAssertEqual(state.release(), .none)
+
+        XCTAssertEqual(state.press(requiresDelay: true), .scheduleActivation)
+        XCTAssertEqual(state.activatePending(), .activate)
+        XCTAssertEqual(state.release(), .release)
+    }
+
+    func testCodexResearchUsesTextOnlyReadOnlyAppServerSession() throws {
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/CodexResearchClient.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("codex_voice_research"))
+        XCTAssertTrue(source.contains("app-server"))
+        XCTAssertTrue(source.contains("approvalPolicy\": \"never"))
+        XCTAssertTrue(source.contains("sandboxPolicy\": [\"type\": \"readOnly\""))
+        XCTAssertTrue(source.contains("networkAccess\": true"))
+        XCTAssertFalse(source.contains("localImage"))
+    }
+
+    func testCodexResearchClientSmoke() async throws {
+        guard ProcessInfo.processInfo.environment["RUN_CODEX_RESEARCH_SMOKE"] == "1" else {
+            throw XCTSkip("Codex CLI integration smoke test is opt-in")
+        }
+        let answer = try await CodexResearchClient().ask(
+            question: "1足す1の答えを数字だけで返してください。",
+            onPartialAnswer: { _ in }
+        )
+        XCTAssertEqual(answer.trimmingCharacters(in: .whitespacesAndNewlines), "2")
+    }
 }

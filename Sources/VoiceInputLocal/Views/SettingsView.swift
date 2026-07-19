@@ -11,7 +11,7 @@ struct SettingsView: View {
             Section("音声入力") {
                 Toggle("音声入力を有効にする", isOn: $draft.dictationEnabled)
                 Picker("ホールドキー", selection: $draft.dictationKeyCode) {
-                    ForEach(DictationKey.allCases, id: \.rawValue) { key in
+                    ForEach(availableDictationKeys, id: \.rawValue) { key in
                         Text(key.displayName).tag(key.rawValue)
                     }
                 }
@@ -21,6 +21,19 @@ struct SettingsView: View {
                         Text(language.displayName).tag(language)
                     }
                 }
+            }
+
+            Section("Codexで調べる") {
+                Toggle("音声でCodexに質問する", isOn: $draft.codexResearchEnabled)
+                Picker("長押しキー", selection: $draft.codexResearchKeyCode) {
+                    ForEach(availableCodexKeys, id: \.rawValue) { key in
+                        Text(key.displayName).tag(key.rawValue)
+                    }
+                }
+                .disabled(!draft.codexResearchEnabled)
+                Text("長押し中に質問を話し、離すとCodexへ送ります。短いタップやキーボードショートカットでは起動しません。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("権限") {
@@ -65,5 +78,15 @@ struct SettingsView: View {
             model.refreshPermissions()
             accessibilityTrusted = AccessibilityPermission.isTrusted()
         }
+    }
+
+    private var availableDictationKeys: [DictationKey] {
+        guard draft.codexResearchEnabled else { return DictationKey.allCases }
+        return DictationKey.allCases.filter { $0.rawValue != draft.codexResearchKeyCode }
+    }
+
+    private var availableCodexKeys: [DictationKey] {
+        guard draft.dictationEnabled else { return DictationKey.allCases }
+        return DictationKey.allCases.filter { $0.rawValue != draft.dictationKeyCode }
     }
 }

@@ -47,8 +47,10 @@ final class AppModel {
     }
 
     func updateSettings(_ settings: AppSettings) {
-        self.settings = settings
-        storage.saveSettings(settings)
-        LoginItem.setEnabled(settings.autoLaunch)
+        var resolved = settings
+        resolved.resolveKeyConflict(preferCodexKey: false)
+        self.settings = resolved
+        storage.saveSettings(resolved)
+        LoginItem.setEnabled(resolved.autoLaunch)
     }
 }

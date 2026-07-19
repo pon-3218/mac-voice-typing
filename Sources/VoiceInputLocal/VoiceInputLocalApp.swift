@@ -10,7 +10,7 @@ struct VoiceInputLocalApp: App {
     var body: some Scene {
         Settings {
             SettingsView().environment(model)
-                .frame(width: 500, height: 390)
+                .frame(width: 520, height: 520)
         }
     }
 }
@@ -22,14 +22,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private let hotkey = HotkeyMonitor()
+    private let codexHotkey = HotkeyMonitor()
     private let dictation = DictationController()
     private let hud = DictationHUDController()
+    private let codexResearch = CodexResearchController()
+    private lazy var codexResearchWindow = CodexResearchWindowController(controller: codexResearch)
     private var updaterController: SPUStandardUpdaterController!
     private var prewarmTask: Task<Void, Never>?
     private var permissionRequestInFlight = false
     private var automaticSetupStarted = false
     private var permissionWatchTask: Task<Void, Never>?
     private weak var previouslyActiveApplication: NSRunningApplication?
+    private var activeDestination: DictationController.Destination?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -58,9 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func applicationDidBecomeActive(_ notification: Notification) {
         AppModel.shared.refreshPermissions()
-        if AppModel.shared.settings.dictationEnabled, AccessibilityPermission.isTrusted() {
-            if AppModel.shared.microphoneGranted { dictation.prepareCapture() }
-            hotkey.start()
+        let settings = AppModel.shared.settings
+        if (settings.dictationEnabled || settings.codexResearchEnabled), AccessibilityPermission.isTrusted() {
+            applyPreferences()
         }
     }
 
@@ -68,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         permissionWatchTask?.cancel()
         prewarmTask?.cancel()
         hotkey.stop()
+        codexHotkey.stop()
         dictation.cancel()
     }
 
@@ -81,12 +86,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 self.requestMissingPermissionsForHotkey()
                 return
             }
-            self.beginListening()
+            self.beginListening(destination: .textInput)
         }
-        hotkey.onRelease = { [weak self] in self?.dictation.stopAndDeliver() }
-        dictation.onFinished = { [weak self] in self?.hud.hide() }
-        dictation.onDeliveredText = { text, duration, language in
-            AppModel.shared.addDictation(text: text, duration: duration, languageMode: language)
+        hotkey.onRelease = { [weak self] in self?.endListening(destination: .textInput) }
+
+        codexHotkey.activationDelay = 0.45
+        codexHotkey.cancelsDelayedActivationOnOtherKey = true
+        codexHotkey.onPress = { [weak self] in
+            guard let self, AppModel.shared.settings.codexResearchEnabled else { return }
+            AppModel.shared.refreshPermissions()
+            guard AppModel.shared.microphoneGranted else {
+                self.requestMissingPermissionsForHotkey()
+                return
+            }
+            self.beginListening(destination: .codexResearch)
+        }
+        codexHotkey.onRelease = { [weak self] in self?.endListening(destination: .codexResearch) }
+
+        dictation.onFinished = { [weak self] in
+            self?.activeDestination = nil
+            self?.hud.hide()
+        }
+        dictation.onTranscribedText = { [weak self] text, duration, language, destination in
+            switch destination {
+            case .textInput:
+                AppModel.shared.addDictation(text: text, duration: duration, languageMode: language)
+            case .codexResearch:
+                self?.codexResearchWindow.ask(text)
+            }
         }
         applyPreferences()
     }
@@ -94,14 +121,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applyPreferences() {
         let settings = AppModel.shared.settings
         hotkey.targetKeyCode = UInt16(settings.dictationKeyCode)
+        codexHotkey.targetKeyCode = UInt16(settings.codexResearchKeyCode)
         if settings.dictationEnabled {
-            if AppModel.shared.microphoneGranted { dictation.prepareCapture() }
             hotkey.start()
+        } else {
+            hotkey.stop()
+        }
+        if settings.codexResearchEnabled {
+            codexHotkey.start()
+        } else {
+            codexHotkey.stop()
+        }
+        if settings.dictationEnabled || settings.codexResearchEnabled {
+            if AppModel.shared.microphoneGranted { dictation.prepareCapture() }
             prewarmTask?.cancel()
             let locale = Locale(identifier: settings.languageMode.preferredLocaleIdentifier)
             prewarmTask = Task.detached(priority: .background) { await MicStreamTranscriber.prewarm(locale: locale) }
         } else {
-            hotkey.stop()
             dictation.cancel()
             prewarmTask?.cancel()
             prewarmTask = nil
@@ -174,6 +210,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let settings = NSMenuItem(title: "設定…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
+        if codexResearch.phase != .idle {
+            let research = NSMenuItem(title: "Codexの回答を表示", action: #selector(showCodexResearch), keyEquivalent: "")
+            research.target = self
+            menu.addItem(research)
+        }
         let updates = NSMenuItem(
             title: "アップデートを確認…",
             action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
@@ -252,11 +293,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
-    private func beginListening() {
+    private func beginListening(destination: DictationController.Destination) {
         guard dictation.phase == .idle else { return }
+        activeDestination = destination
         dictation.languageMode = AppModel.shared.settings.languageMode
-        dictation.startListening()
+        dictation.startListening(destination: destination)
         if dictation.phase == .listening { hud.show(dictation) }
+    }
+
+    private func endListening(destination: DictationController.Destination) {
+        guard activeDestination == destination else { return }
+        dictation.stopAndDeliver()
+    }
+
+    @objc private func showCodexResearch() {
+        codexResearchWindow.show()
     }
 
     private func requestMissingPermissionsForHotkey() {

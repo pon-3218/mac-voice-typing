@@ -1,6 +1,64 @@
 import Foundation
 import AppKit
 
+struct HoldActivationState {
+    enum Action: Equatable {
+        case none
+        case scheduleActivation
+        case cancelPending
+        case activate
+        case release
+    }
+
+    private var isPressed = false
+    private var activationPending = false
+    private var isActive = false
+
+    mutating func press(requiresDelay: Bool) -> Action {
+        guard !isPressed else { return .none }
+        isPressed = true
+        if requiresDelay {
+            activationPending = true
+            return .scheduleActivation
+        }
+        isActive = true
+        return .activate
+    }
+
+    mutating func activatePending() -> Action {
+        guard isPressed, activationPending else { return .none }
+        activationPending = false
+        isActive = true
+        return .activate
+    }
+
+    mutating func otherKeyPressed() -> Action {
+        guard activationPending else { return .none }
+        activationPending = false
+        return .cancelPending
+    }
+
+    mutating func release() -> Action {
+        guard isPressed else { return .none }
+        isPressed = false
+        if activationPending {
+            activationPending = false
+            return .cancelPending
+        }
+        if isActive {
+            isActive = false
+            return .release
+        }
+        return .none
+    }
+
+    mutating func reset() {
+        isPressed = false
+        activationPending = false
+        isActive = false
+    }
+}
+
 /// 設定された修飾キーの押下/解放をグローバル＋ローカルで監視する。
 /// グローバル監視にはアクセシビリティ（入力監視）権限が必要。
 @MainActor
@@ -8,20 +66,23 @@ final class HotkeyMonitor {
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
-    private var targetKeyDown = false
+    private var activationState = HoldActivationState()
+    private var activationTask: Task<Void, Never>?
 
     var onPress: (() -> Void)?
     var onRelease: (() -> Void)?
 
     /// 監視対象の keyCode（既定 63 = Fn）。設定で変更可能。
     var targetKeyCode: UInt16 = 63
+    var activationDelay: TimeInterval = 0
+    var cancelsDelayedActivationOnOtherKey = false
 
     func start() {
         stop()
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
             self?.handle(event)
         }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
             self?.handle(event)
             return event
         }
@@ -33,22 +94,45 @@ final class HotkeyMonitor {
         if let l = localMonitor { NSEvent.removeMonitor(l) }
         globalMonitor = nil
         localMonitor = nil
-        targetKeyDown = false
+        activationTask?.cancel()
+        activationTask = nil
+        activationState.reset()
     }
 
     private func handle(_ event: NSEvent) {
+        if event.type == .keyDown {
+            guard cancelsDelayedActivationOnOtherKey else { return }
+            perform(activationState.otherKeyPressed())
+            return
+        }
         guard event.keyCode == targetKeyCode else { return }
-        handleState(event.modifierFlags.contains(modifierFlag(for: targetKeyCode)), source: "event")
+        let isDown = event.modifierFlags.contains(modifierFlag(for: targetKeyCode))
+        perform(isDown
+            ? activationState.press(requiresDelay: activationDelay > 0)
+            : activationState.release())
     }
 
-    private func handleState(_ isDown: Bool, source: String) {
-        if isDown && !targetKeyDown {
-            targetKeyDown = true
-            Dbg.log("[hotkey] press keyCode=\(targetKeyCode) source=\(source)")
+    private func perform(_ action: HoldActivationState.Action) {
+        switch action {
+        case .none:
+            break
+        case .scheduleActivation:
+            activationTask?.cancel()
+            let delay = activationDelay
+            activationTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled, let self else { return }
+                self.perform(self.activationState.activatePending())
+            }
+        case .cancelPending:
+            activationTask?.cancel()
+            activationTask = nil
+        case .activate:
+            activationTask = nil
+            Dbg.log("[hotkey] press keyCode=\(targetKeyCode)")
             onPress?()
-        } else if !isDown && targetKeyDown {
-            targetKeyDown = false
-            Dbg.log("[hotkey] release keyCode=\(targetKeyCode) source=\(source)")
+        case .release:
+            Dbg.log("[hotkey] release keyCode=\(targetKeyCode)")
             onRelease?()
         }
     }
