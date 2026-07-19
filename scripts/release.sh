@@ -76,7 +76,7 @@ case "$mode" in
         appcast_dir="$work_dir/appcast"
         mkdir -p "$appcast_dir"
         ditto "$archive_path" "$appcast_dir/${archive_path:t}"
-        print -- "- 音声認識が一文字だけになる問題を修正\n- 自動アップデートに対応" > "$appcast_dir/Voice-Input-Local-$version-macOS.md"
+        print -- "- 専用キーを押している間の音声をCodexへの質問として送信\n- 左右の修飾キーを実際に押して設定可能\n- Codex質問キーを約0.2秒で起動" > "$appcast_dir/Voice-Input-Local-$version-macOS.md"
         print -rn -- "$SPARKLE_EDDSA_PRIVATE_KEY" | \
             "$sparkle_generate_appcast" \
                 --ed-key-file - \
