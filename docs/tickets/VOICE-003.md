@@ -41,3 +41,7 @@ Voice Input Local
 - `swift test`
 - `swift build`
 - 実機で再生音声を流しながらFnホールド前後の出力状態を確認する
+
+## 2026-07-19 調査結果
+
+`setVoiceProcessingEnabled(true)`を有効にした実アプリで、CoreAudioのVoice Processorが録音中に`audio time stamp does not have valid sample time`と`ProcessDownlinkAudio`のI/Oエラーを連続発生させた。保存履歴では導入直後から5〜64.2秒の録音6件がすべて「あ」一文字になったため、音声認識の復旧を優先してVoice Processingによる抑制を撤回した。本チケットは代替方式が決まるまで`open`のままとする。

@@ -51,7 +51,7 @@ final class DictationController {
     }
 
     private func startCapture(_ transcriber: MicStreamTranscriber) -> Bool {
-        do { try capture.prepareForRecording() } catch {
+        do { try capture.prepare() } catch {
             lastError = error.localizedDescription
             finishWithoutText()
             return false

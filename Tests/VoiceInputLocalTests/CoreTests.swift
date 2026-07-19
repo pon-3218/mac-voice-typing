@@ -120,7 +120,7 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(onboarding.contains("ログイン時に自動で起動"))
     }
 
-    func testCaptureUsesMaximumVoiceProcessingDuckingAndStopsIt() throws {
+    func testCaptureDoesNotEnableFailingVoiceProcessingPath() throws {
         let capture = try String(
             contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/OnDemandMicrophoneCapture.swift"),
             encoding: .utf8
@@ -130,11 +130,50 @@ final class CoreTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(capture.contains("setVoiceProcessingEnabled(true)"))
-        XCTAssertTrue(capture.contains("voiceProcessingOtherAudioDuckingConfiguration"))
-        XCTAssertTrue(capture.contains("duckingLevel = .max"))
-        XCTAssertTrue(capture.contains("setVoiceProcessingEnabled(false)"))
+        XCTAssertFalse(capture.contains("setVoiceProcessingEnabled(true)"))
+        XCTAssertFalse(capture.contains("voiceProcessingOtherAudioDuckingConfiguration"))
+        XCTAssertFalse(capture.contains("duckingLevel = .max"))
         XCTAssertTrue(app.contains("func applicationWillTerminate"))
         XCTAssertTrue(app.contains("dictation.cancel()"))
+    }
+
+    func testBatchTranscriberCollectsTheCompleteFinalTranscript() throws {
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/BatchTranscriber.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("FinalTranscriptAssembler"))
+        XCTAssertTrue(source.contains("result.range.start.seconds"))
+        XCTAssertTrue(source.contains("return try await collector.value"))
+        XCTAssertFalse(source.contains("catch { }"))
+    }
+
+    func testFinalTranscriptAssemblerOrdersSegmentsAndReplacesDuplicateRanges() {
+        var assembler = FinalTranscriptAssembler()
+
+        assembler.upsert(start: 1.0, end: 2.0, text: "の日本語")
+        assembler.upsert(start: 0.0, end: 1.0, text: "複数")
+        assembler.upsert(start: 1.0, end: 2.0, text: "の日本語")
+        assembler.upsert(start: 2.0, end: 3.0, text: "")
+
+        XCTAssertEqual(assembler.text, "複数の日本語")
+    }
+
+    func testFinalTranscriptCollectorPropagatesFailureInsteadOfReturningPartialText() async {
+        enum ResultStreamError: Error { case interrupted }
+        let results = AsyncThrowingStream<(Double, Double, String), Error> { continuation in
+            continuation.yield((0.0, 1.0, "あ"))
+            continuation.finish(throwing: ResultStreamError.interrupted)
+        }
+
+        do {
+            _ = try await FinalTranscriptAssembler.collect(results) {
+                (start: $0.0, end: $0.1, text: $0.2)
+            }
+            XCTFail("結果列の失敗を部分文字列の成功として返してはいけない")
+        } catch {
+            XCTAssertTrue(error is ResultStreamError)
+        }
     }
 }
