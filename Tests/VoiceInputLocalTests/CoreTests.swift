@@ -252,14 +252,14 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(settings.codexResearchKeyCode, DictationKey.rightCommand.rawValue)
     }
 
-    func testCodexResearchHotkeyHasNoActivationDelay() throws {
+    func testCodexResearchHotkeyUsesShortActivationDelay() throws {
         let source = try String(
             contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/VoiceInputLocalApp.swift"),
             encoding: .utf8
         )
 
-        XCTAssertFalse(source.contains("codexHotkey.activationDelay ="))
-        XCTAssertFalse(source.contains("codexHotkey.cancelsDelayedActivationOnOtherKey = true"))
+        XCTAssertTrue(source.contains("codexHotkey.activationDelay = 0.2"))
+        XCTAssertTrue(source.contains("codexHotkey.cancelsDelayedActivationOnOtherKey = true"))
     }
 
     func testDelayedHoldIgnoresTapAndShortcutButActivatesLongPress() {

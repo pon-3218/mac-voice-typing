@@ -36,7 +36,7 @@ struct SettingsView: View {
                     target: .codexResearch,
                     enabled: draft.codexResearchEnabled
                 )
-                Text("キーを押すとすぐ録音を開始し、離すとCodexへ送ります。")
+                Text("キーを約0.2秒押すと録音を開始し、離すとCodexへ送ります。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let recordingError {
