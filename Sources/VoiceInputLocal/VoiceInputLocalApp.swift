@@ -145,6 +145,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         LoginItem.setEnabled(settings.autoLaunch)
     }
 
+    func setKeyRecording(_ isRecording: Bool) {
+        if isRecording {
+            hotkey.stop()
+            codexHotkey.stop()
+            dictation.cancel()
+        } else {
+            applyPreferences()
+        }
+    }
+
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.autosaveName = "VoiceInputLocal.statusItem"

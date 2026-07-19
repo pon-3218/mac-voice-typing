@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 enum LanguageMode: String, Codable, CaseIterable, Sendable {
     case auto
@@ -22,18 +23,42 @@ enum LanguageMode: String, Codable, CaseIterable, Sendable {
 }
 
 enum DictationKey: Int, CaseIterable, Sendable {
+    case leftCommand = 55
+    case leftOption = 58
+    case leftControl = 59
+    case leftShift = 56
     case rightOption = 61
     case fn = 63
     case rightCommand = 54
     case rightControl = 62
+    case rightShift = 60
 
     var displayName: String {
         switch self {
+        case .leftCommand: return "左 Command"
+        case .leftOption: return "左 Option"
+        case .leftControl: return "左 Control"
+        case .leftShift: return "左 Shift"
         case .rightOption: return "右 Option"
         case .fn: return "Fn"
         case .rightCommand: return "右 Command"
         case .rightControl: return "右 Control"
+        case .rightShift: return "右 Shift"
         }
+    }
+
+    var eventFlag: CGEventFlags {
+        switch self {
+        case .leftCommand, .rightCommand: return .maskCommand
+        case .leftOption, .rightOption: return .maskAlternate
+        case .leftControl, .rightControl: return .maskControl
+        case .leftShift, .rightShift: return .maskShift
+        case .fn: return .maskSecondaryFn
+        }
+    }
+
+    func isPressed(in flags: CGEventFlags) -> Bool {
+        flags.contains(eventFlag)
     }
 }
 

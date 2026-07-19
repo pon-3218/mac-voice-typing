@@ -279,6 +279,51 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(source.contains("tapDisabledByTimeout"))
     }
 
+    func testAllPhysicalModifierKeyPositionsCanBeRecorded() {
+        let inputs: [(Int, CGEventFlags, DictationKey)] = [
+            (55, .maskCommand, .leftCommand),
+            (54, .maskCommand, .rightCommand),
+            (58, .maskAlternate, .leftOption),
+            (61, .maskAlternate, .rightOption),
+            (59, .maskControl, .leftControl),
+            (62, .maskControl, .rightControl),
+            (56, .maskShift, .leftShift),
+            (60, .maskShift, .rightShift),
+            (63, .maskSecondaryFn, .fn),
+        ]
+
+        for (keyCode, flags, expected) in inputs {
+            let recorded = ModifierKeyRecorder.recordedKey(
+                type: .flagsChanged,
+                keyCode: keyCode,
+                flags: flags
+            )
+            XCTAssertEqual(recorded?.rawValue, expected.rawValue)
+        }
+        XCTAssertNil(ModifierKeyRecorder.recordedKey(
+            type: .flagsChanged,
+            keyCode: 55,
+            flags: []
+        ))
+    }
+
+    func testSettingsRecordsTheActuallyPressedModifierKey() throws {
+        let recorder = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/ModifierKeyRecorder.swift"),
+            encoding: .utf8
+        )
+        let settings = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Views/SettingsView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(recorder.contains("CGEvent.tapCreate"))
+        XCTAssertTrue(recorder.contains("CGEventType.flagsChanged"))
+        XCTAssertTrue(recorder.contains("keyboardEventKeycode"))
+        XCTAssertTrue(settings.contains("設定するキーを押してください"))
+        XCTAssertFalse(settings.contains("Picker(\"長押しキー\""))
+    }
+
     func testCodexResearchUsesTextOnlyReadOnlyAppServerSession() throws {
         let source = try String(
             contentsOf: repositoryRoot.appendingPathComponent("Sources/VoiceInputLocal/Services/CodexResearchClient.swift"),

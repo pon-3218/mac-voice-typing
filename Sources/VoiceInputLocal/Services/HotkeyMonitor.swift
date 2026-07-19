@@ -123,7 +123,8 @@ final class HotkeyMonitor {
             return
         }
         guard type == .flagsChanged, keyCode == targetKeyCode else { return }
-        let isDown = flags.contains(modifierFlag(for: targetKeyCode))
+        guard let targetKey = DictationKey(rawValue: Int(targetKeyCode)) else { return }
+        let isDown = targetKey.isPressed(in: flags)
         Dbg.log("[hotkey] flagsChanged keyCode=\(keyCode) isDown=\(isDown)")
         perform(isDown
             ? activationState.press(requiresDelay: activationDelay > 0)
@@ -154,18 +155,6 @@ final class HotkeyMonitor {
         case .release:
             Dbg.log("[hotkey] release keyCode=\(targetKeyCode)")
             onRelease?()
-        }
-    }
-
-    /// keyCode に対応する修飾フラグ。
-    private func modifierFlag(for keyCode: UInt16) -> CGEventFlags {
-        switch keyCode {
-        case 58, 61: return .maskAlternate
-        case 54, 55: return .maskCommand
-        case 59, 62: return .maskControl
-        case 56, 60: return .maskShift
-        case 63: return .maskSecondaryFn
-        default: return .maskAlternate
         }
     }
 
